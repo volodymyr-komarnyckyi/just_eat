@@ -1,6 +1,6 @@
-import re
-
 import requests
+
+from just_eat_client.exceptions import ConnectionException
 
 
 class JustEatClient:
@@ -10,11 +10,6 @@ class JustEatClient:
                       "AppleWebKit/537.36(KHTML, like Gecko) "
                       "Chrome/117.0.0.0 Safari/537.36"
     }
-
-    @staticmethod
-    def _validate_postcode(postcode: str):
-        pattern = r"^(GIR 0AA|[A-PR-UWYZ]([0-9]{1,2}|([A-HK-Y][0-9]([0-9ABEHMNPRV-Y])?)|[0-9][A-HJKPS-UW])\ [0-9][ABD-HJLNP-UW-Z]{2})$"  # noqa
-        return bool(re.match(pattern, postcode))
 
     @staticmethod
     def _format_restaurants(restaurants):
@@ -29,10 +24,13 @@ class JustEatClient:
         return formatted_restaurants
 
     def by_post_code(self, postcode):
-        url = f"{self.BASE_URL}{postcode}"
-
         try:
-            response = requests.get(url, headers=self.headers)
+            response = requests.get(f"{self.BASE_URL}{postcode}", headers=self.headers)
+            if response.status_code == 403:
+                raise ConnectionException("You have no access for this url! "
+                                          "Try using VPN")
+            elif response.status_code == 404:
+                raise ConnectionException("URL not found!")
             response.raise_for_status()
 
             restaurants_data = response.json()
